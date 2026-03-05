@@ -1,0 +1,30 @@
+name: MacTools
+options:
+  bundleIdPrefix: com.micktaiwan
+  deploymentTarget:
+    macOS: "13.0"
+  xcodeVersion: "16.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MACOSX_DEPLOYMENT_TARGET: "13.0"
+targets:
+  MacTools:
+    type: application
+    platform: macOS
+    sources:
+      - MacTools
+    info:
+      path: MacTools/Info.plist
+      properties:
+        LSUIElement: true
+        NSCalendarsUsageDescription: "Mac Tools needs access to your calendars to display upcoming events in the menu bar."
+    entitlements:
+      path: MacTools/MacTools.entitlements
+      properties:
+        com.apple.security.personal-information.calendars: true
+    settings:
+      base:
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        PRODUCT_BUNDLE_IDENTIFIER: com.micktaiwan.MacTools
