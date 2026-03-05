@@ -87,47 +87,22 @@ struct CalendarMenuView: View {
 
     @ViewBuilder
     private var eventsList: some View {
-        let now = Date()
-        let current = service.todayEvents.filter { $0.startDate <= now && $0.endDate > now }
-        let upcoming = service.todayEvents.filter { $0.startDate > now }
-
-        if current.isEmpty && upcoming.isEmpty {
+        if service.todayEvents.isEmpty {
             Text("Aucun evenement aujourd'hui")
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 12)
-        }
-
-        if !current.isEmpty {
-            sectionHeader("En cours")
-            ForEach(current, id: \.eventIdentifier) { event in
-                eventRow(event, isCurrent: true)
-            }
-        }
-
-        if !upcoming.isEmpty {
-            sectionHeader("A venir")
-            ForEach(upcoming, id: \.eventIdentifier) { event in
-                eventRow(event, isCurrent: false)
+        } else {
+            ForEach(service.todayEvents, id: \.eventIdentifier) { event in
+                eventRow(event)
             }
         }
     }
 
-    private func sectionHeader(_ title: String) -> some View {
-        Text(title)
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .padding(.horizontal, 12)
-            .padding(.top, 4)
-    }
-
-    private func eventRow(_ event: EKEvent, isCurrent: Bool) -> some View {
+    private func eventRow(_ event: EKEvent) -> some View {
         Button {
             openInCalendar(event)
         } label: {
             HStack(spacing: 6) {
-                if isCurrent {
-                    Circle().fill(.red).frame(width: 6, height: 6)
-                }
                 Text(formatTime(event))
                     .font(.system(.caption, design: .monospaced))
                     .foregroundStyle(.secondary)

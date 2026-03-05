@@ -18,14 +18,11 @@ struct CalendarMenuBarLabel: View {
         let title = event.title ?? "Sans titre"
         let shortTitle = title.count > 20 ? String(title.prefix(20)) + "..." : title
 
-        if event.startDate <= now && event.endDate > now {
-            let remaining = Int(event.endDate.timeIntervalSince(now) / 60)
-            return "\(shortTitle) (\(remaining)min)"
-        }
-
-        let minutes = Int(event.startDate.timeIntervalSince(now) / 60)
-        if minutes < 60 {
-            return "\(minutes)min - \(shortTitle)"
+        if Calendar.current.isDateInToday(event.startDate) {
+            let minutes = Int(event.startDate.timeIntervalSince(now) / 60)
+            if minutes < 60 {
+                return "\(minutes)min - \(shortTitle)"
+            }
         }
 
         return "\(timeFormatter.string(from: event.startDate)) \(shortTitle)"

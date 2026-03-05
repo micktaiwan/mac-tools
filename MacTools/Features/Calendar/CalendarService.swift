@@ -87,21 +87,27 @@ final class CalendarService: ObservableObject {
         calendars = store.calendars(for: .event)
 
         let now = Date()
-        let endOfDay = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: now))!
-
+        let cal = Calendar.current
+        let endOfDay = cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: now))!
         let activeCalendars = calendars.filter { !excludedCalendarIDs.contains($0.calendarIdentifier) }
-        let predicate = store.predicateForEvents(
-            withStart: now,
-            end: endOfDay,
-            calendars: activeCalendars.isEmpty ? nil : activeCalendars
-        )
-        let allEvents = store.events(matching: predicate)
+        let calendarsParam = activeCalendars.isEmpty ? nil : activeCalendars
 
-        let filtered = allEvents
-            .filter { !$0.isAllDay && $0.startDate != $0.endDate }
+        let isTimedEvent: (EKEvent) -> Bool = { !$0.isAllDay && $0.startDate != $0.endDate }
+
+        let todayPredicate = store.predicateForEvents(withStart: now, end: endOfDay, calendars: calendarsParam)
+        let filtered = store.events(matching: todayPredicate)
+            .filter { isTimedEvent($0) && $0.startDate > now }
             .sorted { $0.startDate < $1.startDate }
 
         todayEvents = filtered
-        nextEvent = filtered.first { $0.startDate > now } ?? filtered.first { $0.endDate > now }
+        nextEvent = filtered.first
+
+        if nextEvent == nil {
+            let endOfTomorrow = cal.date(byAdding: .day, value: 1, to: endOfDay)!
+            let tomorrowPredicate = store.predicateForEvents(withStart: endOfDay, end: endOfTomorrow, calendars: calendarsParam)
+            nextEvent = store.events(matching: tomorrowPredicate)
+                .filter(isTimedEvent)
+                .min { $0.startDate < $1.startDate }
+        }
     }
 }
