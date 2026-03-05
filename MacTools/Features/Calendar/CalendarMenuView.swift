@@ -4,7 +4,6 @@ import ServiceManagement
 
 struct CalendarMenuView: View {
     @ObservedObject var service: CalendarService
-    @State private var showCalendars = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -24,9 +23,58 @@ struct CalendarMenuView: View {
                 Button("Autoriser") { service.requestAccess() }
                     .padding(.horizontal, 12)
             }
+        }
+        .padding(.top, 8)
+    }
 
-            Divider().padding(.vertical, 4)
+    @ViewBuilder
+    private var eventsList: some View {
+        if service.todayEvents.isEmpty {
+            Text("Aucun evenement aujourd'hui")
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 12)
+        } else {
+            ForEach(service.todayEvents, id: \.eventIdentifier) { event in
+                eventRow(event)
+            }
+        }
+    }
 
+    private func eventRow(_ event: EKEvent) -> some View {
+        Button {
+            openInCalendar(event)
+        } label: {
+            HStack(spacing: 6) {
+                Text(formatTime(event))
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                Text(event.title ?? "Sans titre")
+                    .lineLimit(1)
+                Spacer()
+            }
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 2)
+    }
+
+    private func formatTime(_ event: EKEvent) -> String {
+        "\(timeFormatter.string(from: event.startDate)) - \(timeFormatter.string(from: event.endDate))"
+    }
+
+    private func openInCalendar(_ event: EKEvent) {
+        let url = URL(string: "ical://ekevent/\(event.eventIdentifier ?? "")?method=show&options=more")
+            ?? URL(string: "ical://")!
+        NSWorkspace.shared.open(url)
+    }
+}
+
+struct SettingsSection: View {
+    @ObservedObject var service: CalendarService
+    @State private var showCalendars = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
             Button {
                 withAnimation { showCalendars.toggle() }
             } label: {
@@ -82,47 +130,5 @@ struct CalendarMenuView: View {
             .padding(.horizontal, 12)
             .padding(.bottom, 8)
         }
-        .padding(.top, 8)
-    }
-
-    @ViewBuilder
-    private var eventsList: some View {
-        if service.todayEvents.isEmpty {
-            Text("Aucun evenement aujourd'hui")
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 12)
-        } else {
-            ForEach(service.todayEvents, id: \.eventIdentifier) { event in
-                eventRow(event)
-            }
-        }
-    }
-
-    private func eventRow(_ event: EKEvent) -> some View {
-        Button {
-            openInCalendar(event)
-        } label: {
-            HStack(spacing: 6) {
-                Text(formatTime(event))
-                    .font(.system(.caption, design: .monospaced))
-                    .foregroundStyle(.secondary)
-                Text(event.title ?? "Sans titre")
-                    .lineLimit(1)
-                Spacer()
-            }
-        }
-        .buttonStyle(.plain)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 2)
-    }
-
-    private func formatTime(_ event: EKEvent) -> String {
-        "\(timeFormatter.string(from: event.startDate)) - \(timeFormatter.string(from: event.endDate))"
-    }
-
-    private func openInCalendar(_ event: EKEvent) {
-        let url = URL(string: "ical://ekevent/\(event.eventIdentifier ?? "")?method=show&options=more")
-            ?? URL(string: "ical://")!
-        NSWorkspace.shared.open(url)
     }
 }
