@@ -16,7 +16,8 @@ final class CalendarService: ObservableObject {
     private var notificationObserver: Any?
 
     @Published var nextEvent: EKEvent?
-    @Published var todayEvents: [EKEvent] = []
+    @Published var displayedEvents: [EKEvent] = []
+    @Published var displayedEventsDate: Date?
     @Published var calendars: [EKCalendar] = []
     @Published var authorizationStatus: EKAuthorizationStatus = .notDetermined
     @Published var excludedCalendarIDs: Set<String> = [] {
@@ -99,15 +100,30 @@ final class CalendarService: ObservableObject {
             .filter { isTimedEvent($0) && $0.startDate > now }
             .sorted { $0.startDate < $1.startDate }
 
-        todayEvents = filtered
-        nextEvent = filtered.first
+        if !filtered.isEmpty {
+            displayedEvents = filtered
+            displayedEventsDate = nil
+            nextEvent = filtered.first
+        } else {
+            displayedEvents = []
+            displayedEventsDate = nil
+            nextEvent = nil
 
-        if nextEvent == nil {
-            let endOfTomorrow = cal.date(byAdding: .day, value: 1, to: endOfDay)!
-            let tomorrowPredicate = store.predicateForEvents(withStart: endOfDay, end: endOfTomorrow, calendars: calendarsParam)
-            nextEvent = store.events(matching: tomorrowPredicate)
-                .filter(isTimedEvent)
-                .min { $0.startDate < $1.startDate }
+            var searchStart = endOfDay
+            for _ in 1...14 {
+                let searchEnd = cal.date(byAdding: .day, value: 1, to: searchStart)!
+                let predicate = store.predicateForEvents(withStart: searchStart, end: searchEnd, calendars: calendarsParam)
+                let dayEvents = store.events(matching: predicate)
+                    .filter(isTimedEvent)
+                    .sorted { $0.startDate < $1.startDate }
+                if !dayEvents.isEmpty {
+                    displayedEvents = dayEvents
+                    displayedEventsDate = searchStart
+                    nextEvent = dayEvents.first
+                    break
+                }
+                searchStart = searchEnd
+            }
         }
     }
 }

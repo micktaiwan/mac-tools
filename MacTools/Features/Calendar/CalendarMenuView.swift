@@ -29,15 +29,29 @@ struct CalendarMenuView: View {
 
     @ViewBuilder
     private var eventsList: some View {
-        if service.todayEvents.isEmpty {
-            Text("Aucun evenement aujourd'hui")
+        if service.displayedEvents.isEmpty {
+            Text("Aucun evenement a venir")
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 12)
         } else {
-            ForEach(service.todayEvents, id: \.eventIdentifier) { event in
+            if let date = service.displayedEventsDate {
+                Text(formatDayLabel(date))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 2)
+            }
+            ForEach(service.displayedEvents, id: \.eventIdentifier) { event in
                 eventRow(event)
             }
         }
+    }
+
+    private func formatDayLabel(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "fr_FR")
+        formatter.dateFormat = "EEEE d MMMM"
+        return formatter.string(from: date).capitalized
     }
 
     private func eventRow(_ event: EKEvent) -> some View {
