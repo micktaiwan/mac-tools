@@ -7,6 +7,8 @@ macOS menu bar app (13+) built with SwiftUI.
 - Next calendar event displayed in the menu bar with relative time
 - List of today's events (current / upcoming)
 - Calendar filtering
+- Gmail unread emails count in the menu bar (via [gws](https://github.com/nicholasgasior/gws) CLI)
+- Unread emails list with trash action
 - Launch at startup
 - No Dock icon (LSUIElement)
 
