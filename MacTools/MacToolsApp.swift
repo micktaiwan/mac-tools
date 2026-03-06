@@ -77,8 +77,31 @@ struct MenuContentView: View {
     @ObservedObject var calendarService: CalendarService
     @ObservedObject var gmailService: GmailService
 
+    @State private var isRefreshing = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Spacer()
+                Button {
+                    isRefreshing = true
+                    calendarService.fetchEvents()
+                    gmailService.fetch()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        isRefreshing = false
+                    }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .rotationEffect(.degrees(isRefreshing ? 360 : 0))
+                        .animation(isRefreshing ? .linear(duration: 0.5) : .default, value: isRefreshing)
+                }
+                .buttonStyle(.plain)
+                .padding(.trailing, 12)
+                .padding(.top, 4)
+            }
+
             CalendarMenuView(service: calendarService)
 
             Divider().padding(.vertical, 4)
