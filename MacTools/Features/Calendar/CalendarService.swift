@@ -93,7 +93,11 @@ final class CalendarService: ObservableObject {
         let activeCalendars = calendars.filter { !excludedCalendarIDs.contains($0.calendarIdentifier) }
         let calendarsParam = activeCalendars.isEmpty ? nil : activeCalendars
 
-        let isTimedEvent: (EKEvent) -> Bool = { !$0.isAllDay && $0.startDate != $0.endDate }
+        let isTimedEvent: (EKEvent) -> Bool = {
+            guard !$0.isAllDay && $0.startDate != $0.endDate else { return false }
+            // Filter out events spanning 24h+ (all-day events not marked as such, e.g. Google Calendar sync)
+            return $0.endDate.timeIntervalSince($0.startDate) < 24 * 3600
+        }
 
         let todayPredicate = store.predicateForEvents(withStart: now, end: endOfDay, calendars: calendarsParam)
         let filtered = store.events(matching: todayPredicate)
@@ -114,7 +118,7 @@ final class CalendarService: ObservableObject {
                 let searchEnd = cal.date(byAdding: .day, value: 1, to: searchStart)!
                 let predicate = store.predicateForEvents(withStart: searchStart, end: searchEnd, calendars: calendarsParam)
                 let dayEvents = store.events(matching: predicate)
-                    .filter(isTimedEvent)
+                    .filter { isTimedEvent($0) && $0.startDate >= searchStart }
                     .sorted { $0.startDate < $1.startDate }
                 if !dayEvents.isEmpty {
                     displayedEvents = dayEvents

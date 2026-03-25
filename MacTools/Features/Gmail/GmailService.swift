@@ -16,7 +16,7 @@ final class GmailService: ObservableObject {
     var unreadCount: Int { unreadMessages.count }
 
     private var timer: Timer?
-    private let maxResults = 10
+    private let maxResults = 50
     private let gwsPath: String
 
     init() {
@@ -146,6 +146,12 @@ final class GmailService: ObservableObject {
                 let process = Process()
                 process.executableURL = URL(fileURLWithPath: gwsPath)
                 process.arguments = args
+                // Ensure node is in PATH for gws (#!/usr/bin/env node shebang)
+                let gwsDir = URL(fileURLWithPath: gwsPath).deletingLastPathComponent().path
+                var env = ProcessInfo.processInfo.environment
+                let existingPath = env["PATH"] ?? "/usr/bin:/bin:/usr/sbin:/sbin"
+                env["PATH"] = "\(gwsDir):\(existingPath)"
+                process.environment = env
                 let stdout = Pipe()
                 let stderr = Pipe()
                 process.standardOutput = stdout
