@@ -104,21 +104,24 @@ struct SettingsSection: View {
             .padding(.vertical, 4)
 
             if showCalendars {
-                VStack(alignment: .leading, spacing: 2) {
-                    ForEach(service.calendars, id: \.calendarIdentifier) { calendar in
-                        Toggle(calendar.title, isOn: Binding(
-                            get: { !service.excludedCalendarIDs.contains(calendar.calendarIdentifier) },
-                            set: { enabled in
-                                if enabled {
-                                    service.excludedCalendarIDs.remove(calendar.calendarIdentifier)
-                                } else {
-                                    service.excludedCalendarIDs.insert(calendar.calendarIdentifier)
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 2) {
+                        ForEach(service.calendars, id: \.calendarIdentifier) { calendar in
+                            Toggle(calendar.title, isOn: Binding(
+                                get: { !service.excludedCalendarIDs.contains(calendar.calendarIdentifier) },
+                                set: { enabled in
+                                    if enabled {
+                                        service.excludedCalendarIDs.remove(calendar.calendarIdentifier)
+                                    } else {
+                                        service.excludedCalendarIDs.insert(calendar.calendarIdentifier)
+                                    }
                                 }
-                            }
-                        ))
-                        .toggleStyle(.checkbox)
+                            ))
+                            .toggleStyle(.checkbox)
+                        }
                     }
                 }
+                .frame(maxHeight: 400)
                 .padding(.horizontal, 12)
                 .padding(.bottom, 4)
             }

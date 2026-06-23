@@ -18,9 +18,14 @@ struct GmailMenuView: View {
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 12)
         } else {
-            ForEach(service.unreadMessages) { message in
-                messageRow(message)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(service.unreadMessages) { message in
+                        messageRow(message)
+                    }
+                }
             }
+            .frame(maxHeight: 700)
         }
     }
 

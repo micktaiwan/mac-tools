@@ -31,9 +31,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             calendarService: calendarService,
             gmailService: gmailService
         )
-        popover.contentSize = NSSize(width: 320, height: 400)
         popover.behavior = .transient
-        popover.contentViewController = NSHostingController(rootView: contentView)
+        let hostingController = NSHostingController(rootView: contentView)
+        hostingController.sizingOptions = [.preferredContentSize]
+        popover.contentViewController = hostingController
 
         calendarService.$nextEvent
             .receive(on: RunLoop.main)
