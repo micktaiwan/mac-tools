@@ -3,12 +3,14 @@ import SwiftUI
 struct OptionsWindowView: View {
     @ObservedObject var calendarService: CalendarService
     @ObservedObject var shortcutStore: ShortcutStore
+    @ObservedObject var snapService: SnapService
     @StateObject private var shortcutsService = ShortcutsService()
 
     enum Tab: String, CaseIterable, Identifiable {
         case general
         case calendarMail
         case shortcuts
+        case snap
 
         var id: String { rawValue }
 
@@ -17,6 +19,7 @@ struct OptionsWindowView: View {
             case .general: return "General"
             case .calendarMail: return "Calendrier et emails"
             case .shortcuts: return "Raccourcis et scripts"
+            case .snap: return "Fenetres"
             }
         }
 
@@ -25,11 +28,24 @@ struct OptionsWindowView: View {
             case .general: return "gearshape"
             case .calendarMail: return "calendar"
             case .shortcuts: return "keyboard"
+            case .snap: return "macwindow.on.rectangle"
             }
         }
     }
 
-    @State private var selection: Tab = .general
+    @State private var selection: Tab
+
+    init(
+        calendarService: CalendarService,
+        shortcutStore: ShortcutStore,
+        snapService: SnapService,
+        initialTab: Tab = .general
+    ) {
+        self.calendarService = calendarService
+        self.shortcutStore = shortcutStore
+        self.snapService = snapService
+        _selection = State(initialValue: initialTab)
+    }
 
     var body: some View {
         NavigationSplitView {
@@ -48,6 +64,8 @@ struct OptionsWindowView: View {
                 CalendarMailOptionsView(calendarService: calendarService)
             case .shortcuts:
                 ShortcutsOptionsView(shortcutsService: shortcutsService, store: shortcutStore)
+            case .snap:
+                SnapOptionsView(snapService: snapService)
             }
         }
         .navigationSplitViewStyle(.balanced)

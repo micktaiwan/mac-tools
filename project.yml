@@ -25,6 +25,11 @@ targets:
         com.apple.security.personal-information.calendars: true
     settings:
       base:
-        CODE_SIGN_IDENTITY: "-"
+        # Signed with a real identity, not ad hoc: macOS keys the Accessibility
+        # grant to the code signature, and an ad-hoc signature changes on every
+        # rebuild, which would mean re-ticking the checkbox in System Settings
+        # after each build.
+        CODE_SIGN_IDENTITY: "Apple Development"
         CODE_SIGN_STYLE: Manual
+        DEVELOPMENT_TEAM: ZMKDR6H89Y
         PRODUCT_BUNDLE_IDENTIFIER: com.micktaiwan.MacTools

@@ -12,12 +12,21 @@ struct GmailMessage: Identifiable {
 final class GmailService: ObservableObject {
     @Published var unreadMessages: [GmailMessage] = []
     @Published var isAvailable: Bool = true
+    /// True when the inbox holds at least `maxResults` unread messages, so the
+    /// count shown is a floor rather than the real total.
+    @Published private(set) var reachedLimit = false
 
     var unreadCount: Int { unreadMessages.count }
+
+    /// "12", or "50+" when the fetch hit its ceiling.
+    var unreadCountLabel: String { "\(unreadCount)\(reachedLimit ? "+" : "")" }
 
     private var timer: Timer?
     private let maxResults = 50
     private let gwsPath: String
+    /// Message details already fetched, kept between polls so each cycle only
+    /// spawns a `gws` process for messages it has never seen.
+    private var messageCache: [String: GmailMessage] = [:]
 
     init() {
         gwsPath = Self.findGws() ?? "gws"
@@ -74,19 +83,36 @@ final class GmailService: ObservableObject {
             isAvailable = false
             return
         }
+        guard let listJson = try? JSONSerialization.jsonObject(with: listData) as? [String: Any] else {
+            // Unreadable output is not a working Gmail either; saying so beats
+            // showing a stale list as if it were current.
+            isAvailable = false
+            return
+        }
         isAvailable = true
-
-        guard let listJson = try? JSONSerialization.jsonObject(with: listData) as? [String: Any] else { return }
 
         guard let messages = listJson["messages"] as? [[String: Any]] else {
             unreadMessages = []
+            messageCache.removeAll()
+            reachedLimit = false
             return
         }
 
+        let ids = messages.compactMap { $0["id"] as? String }
+        reachedLimit = ids.count >= maxResults
+
+        // Forget messages that have been read or moved elsewhere.
+        let stillUnread = Set(ids)
+        messageCache = messageCache.filter { stillUnread.contains($0.key) }
+
         var fetched: [GmailMessage] = []
-        for msg in messages {
-            guard let msgId = msg["id"] as? String else { continue }
-            if let detail = await fetchMessageDetail(id: msgId) {
+        for id in ids {
+            if let cached = messageCache[id] {
+                fetched.append(cached)
+                continue
+            }
+            if let detail = await fetchMessageDetail(id: id) {
+                messageCache[id] = detail
                 fetched.append(detail)
             }
         }
@@ -123,6 +149,7 @@ final class GmailService: ObservableObject {
 
     func removeAndTrash(id: String) {
         unreadMessages.removeAll { $0.id == id }
+        messageCache[id] = nil
         Task {
             let _ = await runGws(args: [
                 "gmail", "users", "messages", "modify",

@@ -9,7 +9,9 @@ enum CalendarMenuBarLabel {
         if Calendar.current.isDateInToday(event.startDate) {
             let minutes = Int(event.startDate.timeIntervalSince(now) / 60)
             if minutes < 60 {
-                return "\(minutes)min - \(shortTitle)"
+                // The menu bar refreshes twice as often as the calendar, so an
+                // event that just started would otherwise read "-1min".
+                return "\(max(minutes, 0))min - \(shortTitle)"
             }
         }
 

@@ -91,7 +91,15 @@ final class CalendarService: ObservableObject {
         let cal = Calendar.current
         let endOfDay = cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: now))!
         let activeCalendars = calendars.filter { !excludedCalendarIDs.contains($0.calendarIdentifier) }
-        let calendarsParam = activeCalendars.isEmpty ? nil : activeCalendars
+        // A nil calendar list means "every calendar" to EventKit, so excluding
+        // them all would show everything instead of nothing. Bail out instead.
+        guard !activeCalendars.isEmpty else {
+            displayedEvents = []
+            displayedEventsDate = nil
+            nextEvent = nil
+            return
+        }
+        let calendarsParam = activeCalendars
 
         let isTimedEvent: (EKEvent) -> Bool = {
             guard !$0.isAllDay && $0.startDate != $0.endDate else { return false }

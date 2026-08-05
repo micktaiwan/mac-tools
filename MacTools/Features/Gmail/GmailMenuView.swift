@@ -9,7 +9,7 @@ struct GmailMenuView: View {
             HStack(spacing: 6) {
                 Image(systemName: "exclamationmark.triangle")
                     .foregroundStyle(.orange)
-                Text("gws CLI non disponible")
+                Text("Gmail indisponible (gws)")
                     .foregroundStyle(.secondary)
             }
             .padding(.horizontal, 12)

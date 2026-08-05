@@ -18,10 +18,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private let calendarService = CalendarService()
     private let gmailService = GmailService()
     private let shortcutStore = ShortcutStore()
+    private let snapService = SnapService()
     private lazy var shortcutsIPCServer = ShortcutsIPCServer(store: shortcutStore)
     private lazy var optionsWindowController = OptionsWindowController(
         calendarService: calendarService,
-        shortcutStore: shortcutStore
+        shortcutStore: shortcutStore,
+        snapService: snapService
     )
     private var cancellables = Set<AnyCancellable>()
     private var timer: Timer?
@@ -54,6 +56,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             .store(in: &cancellables)
 
         shortcutsIPCServer.start()
+        snapService.start()
+
+        // See OptionsWindowController for the debug hook this pairs with.
+        if UserDefaults.standard.string(forKey: "debugOpenOptionsTab") != nil {
+            optionsWindowController.show()
+        }
 
         // Periodic update for relative time display
         timer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
@@ -68,7 +76,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         if gmailService.unreadCount > 0 {
             if !title.isEmpty { title += "  " }
-            title += "✉ \(gmailService.unreadCount)"
+            title += "✉ \(gmailService.unreadCountLabel)"
         }
         statusItem.button?.title = title
     }
@@ -139,7 +147,7 @@ struct MenuContentView: View {
                     .foregroundStyle(.secondary)
                 Spacer()
                 if gmailService.unreadCount > 0 {
-                    Text("\(gmailService.unreadCount)")
+                    Text(gmailService.unreadCountLabel)
                         .font(.caption2)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 1)
