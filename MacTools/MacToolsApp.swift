@@ -17,6 +17,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private let popover = NSPopover()
     private let calendarService = CalendarService()
     private let gmailService = GmailService()
+    private let shortcutStore = ShortcutStore()
+    private lazy var shortcutsIPCServer = ShortcutsIPCServer(store: shortcutStore)
+    private lazy var optionsWindowController = OptionsWindowController(
+        calendarService: calendarService,
+        shortcutStore: shortcutStore
+    )
     private var cancellables = Set<AnyCancellable>()
     private var timer: Timer?
 
@@ -29,7 +35,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         let contentView = MenuContentView(
             calendarService: calendarService,
-            gmailService: gmailService
+            gmailService: gmailService,
+            onOpenOptions: { [weak self] in self?.openOptions() }
         )
         popover.behavior = .transient
         let hostingController = NSHostingController(rootView: contentView)
@@ -45,6 +52,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.updateMenuBar() }
             .store(in: &cancellables)
+
+        shortcutsIPCServer.start()
 
         // Periodic update for relative time display
         timer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
@@ -64,6 +73,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem.button?.title = title
     }
 
+    private func openOptions() {
+        popover.performClose(nil)
+        optionsWindowController.show()
+    }
+
     @objc private func togglePopover() {
         if popover.isShown {
             popover.performClose(nil)
@@ -77,12 +91,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 struct MenuContentView: View {
     @ObservedObject var calendarService: CalendarService
     @ObservedObject var gmailService: GmailService
+    let onOpenOptions: () -> Void
 
     @State private var isRefreshing = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack {
+            HStack(spacing: 12) {
                 Spacer()
                 Button {
                     isRefreshing = true
@@ -99,9 +114,19 @@ struct MenuContentView: View {
                         .animation(isRefreshing ? .linear(duration: 0.5) : .default, value: isRefreshing)
                 }
                 .buttonStyle(.plain)
-                .padding(.trailing, 12)
-                .padding(.top, 4)
+
+                Button {
+                    onOpenOptions()
+                } label: {
+                    Image(systemName: "gearshape")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help("Options")
             }
+            .padding(.trailing, 12)
+            .padding(.top, 4)
 
             CalendarMenuView(service: calendarService)
 
@@ -130,7 +155,7 @@ struct MenuContentView: View {
 
             Divider().padding(.vertical, 4)
 
-            SettingsSection(service: calendarService)
+            SettingsSection()
         }
         .frame(width: 320)
         .padding(.vertical, 4)

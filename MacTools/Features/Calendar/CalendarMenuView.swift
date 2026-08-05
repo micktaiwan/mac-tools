@@ -1,6 +1,5 @@
 import SwiftUI
 import EventKit
-import ServiceManagement
 
 struct CalendarMenuView: View {
     @ObservedObject var service: CalendarService
@@ -83,63 +82,10 @@ struct CalendarMenuView: View {
     }
 }
 
+/// Settings live in the Options window; the popover keeps only Quit.
 struct SettingsSection: View {
-    @ObservedObject var service: CalendarService
-    @State private var showCalendars = false
-
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Button {
-                withAnimation { showCalendars.toggle() }
-            } label: {
-                HStack {
-                    Text("Calendriers")
-                    Spacer()
-                    Image(systemName: showCalendars ? "chevron.up" : "chevron.down")
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .buttonStyle(.plain)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 4)
-
-            if showCalendars {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 2) {
-                        ForEach(service.calendars, id: \.calendarIdentifier) { calendar in
-                            Toggle(calendar.title, isOn: Binding(
-                                get: { !service.excludedCalendarIDs.contains(calendar.calendarIdentifier) },
-                                set: { enabled in
-                                    if enabled {
-                                        service.excludedCalendarIDs.remove(calendar.calendarIdentifier)
-                                    } else {
-                                        service.excludedCalendarIDs.insert(calendar.calendarIdentifier)
-                                    }
-                                }
-                            ))
-                            .toggleStyle(.checkbox)
-                        }
-                    }
-                }
-                .frame(maxHeight: 400)
-                .padding(.horizontal, 12)
-                .padding(.bottom, 4)
-            }
-
-            Divider().padding(.vertical, 4)
-
-            Toggle("Lancer au demarrage", isOn: Binding(
-                get: { SMAppService.mainApp.status == .enabled },
-                set: { enable in
-                    try? enable ? SMAppService.mainApp.register() : SMAppService.mainApp.unregister()
-                }
-            ))
-            .toggleStyle(.checkbox)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 2)
-
-            Divider().padding(.vertical, 4)
-
             Button("Quitter") {
                 NSApplication.shared.terminate(nil)
             }
