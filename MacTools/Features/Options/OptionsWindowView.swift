@@ -4,7 +4,8 @@ struct OptionsWindowView: View {
     @ObservedObject var calendarService: CalendarService
     @ObservedObject var shortcutStore: ShortcutStore
     @ObservedObject var snapService: SnapService
-    @StateObject private var shortcutsService = ShortcutsService()
+    @ObservedObject var hintService: HintService
+    @ObservedObject var shortcutsService: ShortcutsService
 
     enum Tab: String, CaseIterable, Identifiable {
         case general
@@ -39,11 +40,15 @@ struct OptionsWindowView: View {
         calendarService: CalendarService,
         shortcutStore: ShortcutStore,
         snapService: SnapService,
+        hintService: HintService,
+        shortcutsInventory: ShortcutsService,
         initialTab: Tab = .general
     ) {
         self.calendarService = calendarService
         self.shortcutStore = shortcutStore
         self.snapService = snapService
+        self.hintService = hintService
+        self.shortcutsService = shortcutsInventory
         _selection = State(initialValue: initialTab)
     }
 
@@ -63,7 +68,11 @@ struct OptionsWindowView: View {
             case .calendarMail:
                 CalendarMailOptionsView(calendarService: calendarService)
             case .shortcuts:
-                ShortcutsOptionsView(shortcutsService: shortcutsService, store: shortcutStore)
+                ShortcutsOptionsView(
+                    shortcutsService: shortcutsService,
+                    store: shortcutStore,
+                    hintService: hintService
+                )
             case .snap:
                 SnapOptionsView(snapService: snapService)
             }

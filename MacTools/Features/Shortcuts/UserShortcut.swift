@@ -58,9 +58,7 @@ struct UserShortcut: Codable, Identifiable, Equatable {
 
     /// Modifiers in Apple's display order, then the key.
     var combo: String {
-        let order: [Modifier] = [.control, .option, .shift, .command]
-        let symbols = order.filter(modifiers.contains).map(\.symbol).joined()
-        return symbols + KeyCodeResolver.displayName(for: key)
+        ShortcutFormatter.symbols(for: Set(modifiers)) + KeyCodeResolver.displayName(for: key)
     }
 }
 

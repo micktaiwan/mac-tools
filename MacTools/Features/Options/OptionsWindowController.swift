@@ -8,12 +8,22 @@ final class OptionsWindowController {
     private let calendarService: CalendarService
     private let shortcutStore: ShortcutStore
     private let snapService: SnapService
+    private let hintService: HintService
+    private let shortcutsInventory: ShortcutsService
     private var window: NSWindow?
 
-    init(calendarService: CalendarService, shortcutStore: ShortcutStore, snapService: SnapService) {
+    init(
+        calendarService: CalendarService,
+        shortcutStore: ShortcutStore,
+        snapService: SnapService,
+        hintService: HintService,
+        shortcutsInventory: ShortcutsService
+    ) {
         self.calendarService = calendarService
         self.shortcutStore = shortcutStore
         self.snapService = snapService
+        self.hintService = hintService
+        self.shortcutsInventory = shortcutsInventory
     }
 
     func show() {
@@ -42,6 +52,8 @@ final class OptionsWindowController {
             calendarService: calendarService,
             shortcutStore: shortcutStore,
             snapService: snapService,
+            hintService: hintService,
+            shortcutsInventory: shortcutsInventory,
             initialTab: initialTab
         )
         window.contentView = NSHostingView(rootView: rootView)

@@ -20,10 +20,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private let shortcutStore = ShortcutStore()
     private let snapService = SnapService()
     private lazy var shortcutsIPCServer = ShortcutsIPCServer(store: shortcutStore)
+    private let shortcutsInventory = ShortcutsService()
+    private lazy var hintService = HintService(store: shortcutStore, inventory: shortcutsInventory)
     private lazy var optionsWindowController = OptionsWindowController(
         calendarService: calendarService,
         shortcutStore: shortcutStore,
-        snapService: snapService
+        snapService: snapService,
+        hintService: hintService,
+        shortcutsInventory: shortcutsInventory
     )
     private var cancellables = Set<AnyCancellable>()
     private var timer: Timer?
@@ -57,6 +61,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         shortcutsIPCServer.start()
         snapService.start()
+        hintService.start()
 
         // See OptionsWindowController for the debug hook this pairs with.
         if UserDefaults.standard.string(forKey: "debugOpenOptionsTab") != nil {

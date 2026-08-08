@@ -3,10 +3,13 @@ import SwiftUI
 struct ShortcutsOptionsView: View {
     @ObservedObject var shortcutsService: ShortcutsService
     @ObservedObject var store: ShortcutStore
+    @ObservedObject var hintService: HintService
 
     var body: some View {
         OptionsPage(title: "Raccourcis et scripts") {
             MyShortcutsSection(store: store)
+            Divider()
+            HintsSection(hintService: hintService)
             Divider()
             SystemShortcutsSection(shortcutsService: shortcutsService)
         }
@@ -97,6 +100,37 @@ private struct MyShortcutsSection: View {
         }
         let output = result.output.trimmingCharacters(in: .whitespacesAndNewlines)
         return "Derniere execution \(time), code \(result.exitCode) : \(output)"
+    }
+}
+
+/// Hold a modifier, see what it reaches. The one part of the feature that
+/// costs an Accessibility grant, so it is opt-in and says why.
+private struct HintsSection: View {
+    @ObservedObject var hintService: HintService
+
+    var body: some View {
+        Text("Aide-memoire")
+            .font(.headline)
+
+        Toggle("Afficher les raccourcis quand je maintiens un modificateur", isOn: $hintService.isEnabled)
+            .toggleStyle(.checkbox)
+
+        Text("Maintiens ⌘ une demi-seconde : un panneau liste ce qui est atteignable. "
+             + "Ajoute ⇧ sans relacher, la liste se reduit.")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+
+        if hintService.isEnabled && !hintService.hasPermission {
+            HStack(spacing: 8) {
+                Image(systemName: "exclamationmark.triangle")
+                    .foregroundStyle(.orange)
+                Text("Autorisation Accessibilite requise : une touche modificatrice seule "
+                     + "n'est pas un raccourci, seul un moniteur global peut la voir.")
+                    .font(.caption)
+                Button("Autoriser") { hintService.requestPermission() }
+                Button("Reglages Systeme") { AccessibilityPermission.openSystemSettings() }
+            }
+        }
     }
 }
 

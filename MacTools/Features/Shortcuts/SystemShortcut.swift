@@ -1,6 +1,10 @@
 import AppKit
 
 /// A keyboard shortcut already registered on this Mac, whatever registered it.
+///
+/// Modifiers and key are kept apart rather than pre-joined into a string: the
+/// hint panel has to ask "is this reachable from what is currently held", which
+/// a display string cannot answer.
 struct SystemShortcut: Identifiable {
     enum Source {
         case system          // com.apple.symbolichotkeys
@@ -17,31 +21,47 @@ struct SystemShortcut: Identifiable {
     let id: String
     let name: String
     let category: String
-    let combo: String
+    let modifiers: Set<UserShortcut.Modifier>
+    /// Display form of the final key, empty when the entry has none bound.
+    let key: String
     let isEnabled: Bool
     let source: Source
+
+    var combo: String {
+        guard !key.isEmpty else { return "Aucune touche" }
+        return ShortcutFormatter.symbols(for: modifiers) + key
+    }
 }
 
 enum ShortcutFormatter {
     /// Sentinel used by macOS for "no key" in symbolic hotkey parameters.
     static let noValue = 65535
 
-    /// Builds "⇧⌘4" from a symbolic hotkey triplet (char code, virtual key code, modifier mask).
-    static func combo(charCode: Int, keyCode: Int, modifiers: Int) -> String? {
-        guard let key = keyName(charCode: charCode, keyCode: keyCode) else { return nil }
-        return modifierSymbols(modifiers) + key
+    /// Apple's display order: control, option, shift, command.
+    static func symbols(for modifiers: Set<UserShortcut.Modifier>) -> String {
+        let order: [UserShortcut.Modifier] = [.control, .option, .shift, .command]
+        return order.filter(modifiers.contains).map(\.symbol).joined()
     }
 
-    /// Modifier mask uses NSEvent.ModifierFlags raw values. Apple's display
-    /// order is control, option, shift, command.
-    static func modifierSymbols(_ mask: Int) -> String {
-        var out = ""
-        if mask & Int(NSEvent.ModifierFlags.function.rawValue) != 0 { out += "fn" }
-        if mask & Int(NSEvent.ModifierFlags.control.rawValue) != 0 { out += "⌃" }
-        if mask & Int(NSEvent.ModifierFlags.option.rawValue) != 0 { out += "⌥" }
-        if mask & Int(NSEvent.ModifierFlags.shift.rawValue) != 0 { out += "⇧" }
-        if mask & Int(NSEvent.ModifierFlags.command.rawValue) != 0 { out += "⌘" }
-        return out
+    /// Splits a symbolic hotkey triplet (char code, virtual key code, modifier
+    /// mask) into the modifiers held and the key pressed.
+    static func parse(
+        charCode: Int,
+        keyCode: Int,
+        modifiers mask: Int
+    ) -> (modifiers: Set<UserShortcut.Modifier>, key: String)? {
+        guard var key = keyName(charCode: charCode, keyCode: keyCode) else { return nil }
+
+        var modifiers: Set<UserShortcut.Modifier> = []
+        if mask & Int(NSEvent.ModifierFlags.control.rawValue) != 0 { modifiers.insert(.control) }
+        if mask & Int(NSEvent.ModifierFlags.option.rawValue) != 0 { modifiers.insert(.option) }
+        if mask & Int(NSEvent.ModifierFlags.shift.rawValue) != 0 { modifiers.insert(.shift) }
+        if mask & Int(NSEvent.ModifierFlags.command.rawValue) != 0 { modifiers.insert(.command) }
+        // fn is not a modifier anything can register, so it rides with the key
+        // rather than pretending to be one of the four.
+        if mask & Int(NSEvent.ModifierFlags.function.rawValue) != 0 { key = "fn \(key)" }
+
+        return (modifiers, key)
     }
 
     private static func keyName(charCode: Int, keyCode: Int) -> String? {
@@ -69,25 +89,25 @@ enum ShortcutFormatter {
     ]
 
     /// Decodes an NSUserKeyEquivalents value such as "@$s" or "\u{f716}".
-    static func combo(fromKeyEquivalent raw: String) -> String {
-        var modifiers = ""
+    static func parse(keyEquivalent raw: String) -> (modifiers: Set<UserShortcut.Modifier>, key: String) {
+        var modifiers: Set<UserShortcut.Modifier> = []
         var rest = Substring(raw)
         loop: while let first = rest.first {
             switch first {
-            case "^": modifiers += "⌃"
-            case "~": modifiers += "⌥"
-            case "$": modifiers += "⇧"
-            case "@": modifiers += "⌘"
+            case "^": modifiers.insert(.control)
+            case "~": modifiers.insert(.option)
+            case "$": modifiers.insert(.shift)
+            case "@": modifiers.insert(.command)
             default: break loop
             }
             rest = rest.dropFirst()
         }
 
-        guard let key = rest.first else { return modifiers }
+        guard let key = rest.first else { return (modifiers, "") }
         // Function keys live in the private use area, NSF1FunctionKey = 0xF704.
         if let scalar = key.unicodeScalars.first, (0xF704...0xF71F).contains(scalar.value) {
-            return modifiers + "F\(scalar.value - 0xF704 + 1)"
+            return (modifiers, "F\(scalar.value - 0xF704 + 1)")
         }
-        return modifiers + String(key).uppercased()
+        return (modifiers, String(key).uppercased())
     }
 }
