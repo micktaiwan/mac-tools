@@ -37,7 +37,8 @@ A global hotkey takes priority over app shortcuts, so binding a combo an app use
 - `ActionRunner` — Runs the command through `/bin/zsh -lc` (login shell, so `~/.local/bin` is in
   PATH), captures stdout and stderr together with the exit code.
 - `ShortcutStore` — Source of truth: loads/saves the JSON, watches the directory, re-registers.
-- `ShortcutsIPCServer` — Unix socket server.
+- `IPCServer` (`MacTools/Features/IPC/`) — Unix socket server. It also answers
+  `next-event`, which has nothing to do with shortcuts: see the CLAUDE.md section.
 - `ShortcutsService` — Unrelated to the above: read-only inventory of shortcuts *already taken*
   on the Mac, for conflict spotting. Reads `com.apple.symbolichotkeys` and `NSUserKeyEquivalents`.
   Names come from Apple's own tables in `KeyboardSettings.appex`, never from a hardcoded guess;

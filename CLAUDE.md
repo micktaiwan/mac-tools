@@ -55,6 +55,11 @@ Single-target SwiftUI app with `@NSApplicationDelegateAdaptor` for menu bar inte
 
 **Shortcuts** (`Shortcuts/`) — see the dedicated section below.
 
+**IPC** (`IPC/`)
+- `IPCServer` — the app's control socket, one JSON object in, one out. It was
+  `Shortcuts/ShortcutsIPCServer.swift` while shortcuts were the only thing anybody asked it
+  for; they are not any more, so it moved here. See the dedicated section below.
+
 **Snap** (`Snap/`) — drag a window against a screen edge, it snaps. Top maximizes, left and right take half. See the dedicated section below.
 
 **Options** (`Options/`)
@@ -76,6 +81,33 @@ Single-target SwiftUI app with `@NSApplicationDelegateAdaptor` for menu bar inte
 - Menu bar updates every 30s (timer) for relative time freshness
 - Calendar refreshes every 60s + on `EKEventStoreChanged` notifications
 - UI text is in French
+
+## The control socket (`MacTools/Features/IPC/`)
+
+One Unix socket at `~/Library/Application Support/MacTools/ipc.sock`, one JSON object per
+connection in, one out, connection closed. Driven from a terminal with:
+
+```bash
+echo '{"command":"next-event"}' | nc -U "$HOME/Library/Application Support/MacTools/ipc.sock"
+```
+
+Commands: `list`, `add`, `remove`, `enable`, `run`, `reload` for the shortcuts, plus
+`next-event`.
+
+**`next-event` is why the file stopped being called `ShortcutsIPCServer`.** This app is the
+one holding the calendar permission on this Mac, so it is the only thing that can answer
+"when is the next meeting". Eko, the desk robot, asks that through `kited`
+(`~/projects/perso/kite/daemon/src/mactools.rs`).
+
+It answers with **facts and never with a screen**: a title, a wall-clock start, a number of
+minutes, the ISO instant, the calendar's name. What the robot does with a meeting in four
+minutes is the robot's business.
+
+Two behaviours worth keeping if this is ever rewritten. A day with nothing left answers
+`present: false` — no meeting is an answer, and a caller that read it as a failure would
+show a broken screen every evening. And **it refuses outright when the calendar permission
+is missing**, rather than answering "no meeting": without that, an empty day and an app that
+was never granted access are indistinguishable at the other end.
 
 ## Keyboard shortcuts
 
