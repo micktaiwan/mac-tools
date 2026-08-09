@@ -1,20 +1,27 @@
 import Foundation
 
-/// Unix socket at ~/Library/Application Support/MacTools/ipc.sock.
+/// The app's control socket, at ~/Library/Application Support/MacTools/ipc.sock.
 ///
 /// One JSON request per connection, one JSON response, connection closed.
 /// Driven from a terminal with:
 ///   echo '{"command":"list"}' | nc -U "$HOME/Library/Application Support/MacTools/ipc.sock"
 ///
-/// Commands: list, add, remove, enable, run, reload.
+/// Commands: list, add, remove, enable, run, reload — the shortcuts — plus
+/// `next-event`, which is not about shortcuts at all. It was called
+/// ShortcutsIPCServer while shortcuts were the only thing anybody asked it for.
+/// They are not: this app is the one holding the calendar permission on this
+/// Mac, so it is the only thing that can answer "when is the next meeting", and
+/// Eko asks that through kited.
 @MainActor
-final class ShortcutsIPCServer {
+final class IPCServer {
     private let store: ShortcutStore
+    private let calendar: CalendarService
     private var listenSource: DispatchSourceRead?
     private let ioQueue = DispatchQueue(label: "com.micktaiwan.MacTools.ipc")
 
-    init(store: ShortcutStore) {
+    init(store: ShortcutStore, calendar: CalendarService) {
         self.store = store
+        self.calendar = calendar
     }
 
     func start() {
@@ -160,9 +167,51 @@ final class ShortcutsIPCServer {
             store.reload()
             return Response(ok: true, shortcuts: store.shortcuts.map(descriptor))
 
+        case "next-event":
+            return nextEvent()
+
         default:
             return Response(ok: false, error: "commande inconnue : \(request.command)")
         }
+    }
+
+    /// The next timed event, as facts rather than as a sentence: the caller
+    /// decides how to word it. `minutes` is how long until it starts, rounded
+    /// down, and it is never negative here because CalendarService only ever
+    /// reports events that have not begun.
+    ///
+    /// A day with nothing left in it answers `present: false` rather than an
+    /// error: no meeting is an answer, and a caller that treated it as a failure
+    /// would show a broken screen every evening.
+    private func nextEvent() -> Response {
+        // Refusing here rather than answering "no meeting" is the whole point:
+        // a robot that cannot tell "nothing today" from "this app was never
+        // granted the calendar" would show an empty screen either way.
+        let granted: Bool
+        if #available(macOS 14.0, *) {
+            granted = calendar.authorizationStatus == .fullAccess
+        } else {
+            granted = calendar.authorizationStatus == .authorized
+        }
+        guard granted else {
+            return Response(ok: false, error: "MacTools n'a pas accès au calendrier")
+        }
+        guard let event = calendar.nextEvent, let start = event.startDate else {
+            return Response(ok: true, event: EventDescriptor(present: false))
+        }
+
+        let minutes = Int(start.timeIntervalSinceNow / 60)
+        return Response(
+            ok: true,
+            event: EventDescriptor(
+                present: true,
+                title: event.title ?? "(sans titre)",
+                start: timeFormatter.string(from: start),
+                minutes: minutes,
+                startsAt: ISO8601DateFormatter().string(from: start),
+                calendar: event.calendar?.title
+            )
+        )
     }
 
     private func descriptor(_ shortcut: UserShortcut) -> ShortcutDescriptor {
@@ -207,9 +256,23 @@ final class ShortcutsIPCServer {
         let lastRun: String?
     }
 
+    /// What `next-event` answers with. Every field is a fact; none of them is a
+    /// presentation choice. `minutes` is what a countdown is built from, `start`
+    /// is the wall clock time in this Mac's locale, and `startsAt` is the same
+    /// instant unambiguously, for a caller that wants to do its own arithmetic.
+    private struct EventDescriptor: Encodable {
+        var present: Bool
+        var title: String?
+        var start: String?
+        var minutes: Int?
+        var startsAt: String?
+        var calendar: String?
+    }
+
     private struct Response: Encodable {
         var ok: Bool
         var error: String?
         var shortcuts: [ShortcutDescriptor]?
+        var event: EventDescriptor?
     }
 }

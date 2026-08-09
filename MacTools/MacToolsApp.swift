@@ -19,7 +19,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private let gmailService = GmailService()
     private let shortcutStore = ShortcutStore()
     private let snapService = SnapService()
-    private lazy var shortcutsIPCServer = ShortcutsIPCServer(store: shortcutStore)
+    private lazy var ipcServer = IPCServer(store: shortcutStore, calendar: calendarService)
     private let shortcutsInventory = ShortcutsService()
     private lazy var hintService = HintService(store: shortcutStore, inventory: shortcutsInventory)
     private lazy var optionsWindowController = OptionsWindowController(
@@ -59,7 +59,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             .sink { [weak self] _ in self?.updateMenuBar() }
             .store(in: &cancellables)
 
-        shortcutsIPCServer.start()
+        ipcServer.start()
         snapService.start()
         hintService.start()
 
