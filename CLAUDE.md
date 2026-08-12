@@ -114,6 +114,37 @@ was never granted access are indistinguishable at the other end.
 Global hotkeys run shell commands. Adding one goes through the IPC socket, never by hand:
 `docs/shortcuts.md`.
 
+## Leaves (`MacTools/Features/Lucca/`)
+
+Who is off today at lempire, read from Lucca's Timmi Absences module and shown in the
+popover under the emails. It exists because Mickael was asking the same question four times
+a day through the `/lucca` skill, which meant a terminal pane and a wait each time; here the
+answer is already on screen when the menu opens.
+
+- `LuccaClient` — the v3 API: `Authorization: lucca application=<key>`, collections wrapped
+  in `{ data: { items: [] } }`, `paging={offset},{limit}`. Two calls, users and leaves, run
+  concurrently. **A leave's `id` is a string** (`"3644-20260810-PM"`), which is why nothing
+  decodes it — the owner comes from `leavePeriod.ownerId`, an Int. The morning flag ships as
+  `isAM` on some Lucca versions and `isAm` on others, so both keys are decoded.
+- `LuccaService` — one leave is a **half-day**; the two halves are folded into full / matin /
+  après-midi per person, then grouped by department. The fetch covers 90 days even though
+  only today is listed, because each row also shows the **last day of the current run** —
+  weekends are stepped over (nobody books a Saturday, so Friday to Monday is one absence),
+  public holidays are not, since this endpoint does not expose them. **Data and SRE roll up
+  into Tech**:
+  Lucca's departments split them out, the org chart does not. The day is resolved at fetch
+  time and in the **local** timezone, so the app rolls over on its own and never asks for
+  yesterday late at night. Refresh every 3 hours, plus the popover's refresh button. A
+  failed fetch keeps the previous list and shows the error above it rather than blanking the
+  section.
+- `LuccaCredentials` — instance URL in UserDefaults, **API key in the Keychain**, never in
+  the preferences. At first launch, both are read once from `~/projects/perso/lucca/.env`
+  (the `lucca-leaves` CLI, which stays the reference implementation) so the key never has to
+  be pasted; afterwards the Keychain is the only source.
+
+The CLI is still the place for anything the menu does not answer — a date range, one
+person's future leaves, JSON — through the `/lucca` skill.
+
 ## Window snapping (`MacTools/Features/Snap/`)
 
 Off by default, turned on in Options > Fenetres. macOS ships its own edge tiling since 15,

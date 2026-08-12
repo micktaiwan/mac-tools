@@ -25,7 +25,7 @@ struct GmailMenuView: View {
                     }
                 }
             }
-            .frame(maxHeight: 700)
+            .frame(maxHeight: 300)
         }
     }
 

@@ -19,6 +19,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private let gmailService = GmailService()
     private let shortcutStore = ShortcutStore()
     private let snapService = SnapService()
+    private let luccaService = LuccaService()
     private lazy var ipcServer = IPCServer(store: shortcutStore, calendar: calendarService)
     private let shortcutsInventory = ShortcutsService()
     private lazy var hintService = HintService(store: shortcutStore, inventory: shortcutsInventory)
@@ -27,7 +28,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         shortcutStore: shortcutStore,
         snapService: snapService,
         hintService: hintService,
-        shortcutsInventory: shortcutsInventory
+        shortcutsInventory: shortcutsInventory,
+        luccaService: luccaService
     )
     private var cancellables = Set<AnyCancellable>()
     private var timer: Timer?
@@ -42,6 +44,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let contentView = MenuContentView(
             calendarService: calendarService,
             gmailService: gmailService,
+            luccaService: luccaService,
             onOpenOptions: { [weak self] in self?.openOptions() }
         )
         popover.behavior = .transient
@@ -104,6 +107,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 struct MenuContentView: View {
     @ObservedObject var calendarService: CalendarService
     @ObservedObject var gmailService: GmailService
+    @ObservedObject var luccaService: LuccaService
     let onOpenOptions: () -> Void
 
     @State private var isRefreshing = false
@@ -116,6 +120,7 @@ struct MenuContentView: View {
                     isRefreshing = true
                     calendarService.fetchEvents()
                     gmailService.fetch()
+                    luccaService.fetch()
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                         isRefreshing = false
                     }
@@ -165,6 +170,28 @@ struct MenuContentView: View {
             .padding(.bottom, 4)
 
             GmailMenuView(service: gmailService)
+
+            Divider().padding(.vertical, 4)
+
+            HStack {
+                Image(systemName: "beach.umbrella")
+                Text("Congés aujourd'hui")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                if luccaService.totalPeople > 0 {
+                    Text("\(luccaService.totalPeople)")
+                        .font(.caption2)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 1)
+                        .background(.secondary.opacity(0.3))
+                        .clipShape(Capsule())
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.bottom, 4)
+
+            LuccaMenuView(service: luccaService)
 
             Divider().padding(.vertical, 4)
 

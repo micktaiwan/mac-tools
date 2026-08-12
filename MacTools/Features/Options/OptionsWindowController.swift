@@ -10,6 +10,7 @@ final class OptionsWindowController {
     private let snapService: SnapService
     private let hintService: HintService
     private let shortcutsInventory: ShortcutsService
+    private let luccaService: LuccaService
     private var window: NSWindow?
 
     init(
@@ -17,13 +18,15 @@ final class OptionsWindowController {
         shortcutStore: ShortcutStore,
         snapService: SnapService,
         hintService: HintService,
-        shortcutsInventory: ShortcutsService
+        shortcutsInventory: ShortcutsService,
+        luccaService: LuccaService
     ) {
         self.calendarService = calendarService
         self.shortcutStore = shortcutStore
         self.snapService = snapService
         self.hintService = hintService
         self.shortcutsInventory = shortcutsInventory
+        self.luccaService = luccaService
     }
 
     func show() {
@@ -54,6 +57,7 @@ final class OptionsWindowController {
             snapService: snapService,
             hintService: hintService,
             shortcutsInventory: shortcutsInventory,
+            luccaService: luccaService,
             initialTab: initialTab
         )
         window.contentView = NSHostingView(rootView: rootView)

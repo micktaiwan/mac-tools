@@ -6,10 +6,12 @@ struct OptionsWindowView: View {
     @ObservedObject var snapService: SnapService
     @ObservedObject var hintService: HintService
     @ObservedObject var shortcutsService: ShortcutsService
+    @ObservedObject var luccaService: LuccaService
 
     enum Tab: String, CaseIterable, Identifiable {
         case general
         case calendarMail
+        case lucca
         case shortcuts
         case snap
 
@@ -19,6 +21,7 @@ struct OptionsWindowView: View {
             switch self {
             case .general: return "General"
             case .calendarMail: return "Calendrier et emails"
+            case .lucca: return "Conges"
             case .shortcuts: return "Raccourcis et scripts"
             case .snap: return "Fenetres"
             }
@@ -28,6 +31,7 @@ struct OptionsWindowView: View {
             switch self {
             case .general: return "gearshape"
             case .calendarMail: return "calendar"
+            case .lucca: return "beach.umbrella"
             case .shortcuts: return "keyboard"
             case .snap: return "macwindow.on.rectangle"
             }
@@ -42,6 +46,7 @@ struct OptionsWindowView: View {
         snapService: SnapService,
         hintService: HintService,
         shortcutsInventory: ShortcutsService,
+        luccaService: LuccaService,
         initialTab: Tab = .general
     ) {
         self.calendarService = calendarService
@@ -49,6 +54,7 @@ struct OptionsWindowView: View {
         self.snapService = snapService
         self.hintService = hintService
         self.shortcutsService = shortcutsInventory
+        self.luccaService = luccaService
         _selection = State(initialValue: initialTab)
     }
 
@@ -67,6 +73,8 @@ struct OptionsWindowView: View {
                 GeneralOptionsView()
             case .calendarMail:
                 CalendarMailOptionsView(calendarService: calendarService)
+            case .lucca:
+                LuccaOptionsView(luccaService: luccaService)
             case .shortcuts:
                 ShortcutsOptionsView(
                     shortcutsService: shortcutsService,
