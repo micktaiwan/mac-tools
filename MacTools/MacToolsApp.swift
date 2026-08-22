@@ -15,6 +15,15 @@ struct MacToolsApp: App {
 class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private let popover = NSPopover()
+    /// The phone gets its own item rather than a third field in the title above.
+    ///
+    /// That title already concatenates the next meeting and the unread count, both of which vary
+    /// in width; adding a third would let the phone push the meeting off a narrow screen. A
+    /// separate item is also separately hideable and movable with a Cmd-drag, which is the only
+    /// way Mickael can decide it matters less than the calendar on a given day.
+    private var phoneStatusItem: NSStatusItem!
+    private let phonePopover = NSPopover()
+    private let phoneStatsService = PhoneStatsService()
     private let calendarService = CalendarService()
     private let gmailService = GmailService()
     private let shortcutStore = ShortcutStore()
@@ -62,6 +71,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             .sink { [weak self] _ in self?.updateMenuBar() }
             .store(in: &cancellables)
 
+        setUpPhoneStatusItem()
+
         ipcServer.start()
         snapService.start()
         hintService.start()
@@ -87,6 +98,53 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             title += "✉ \(gmailService.unreadCountLabel)"
         }
         statusItem.button?.title = title
+    }
+
+    private func setUpPhoneStatusItem() {
+        phoneStatusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        phoneStatusItem.button?.imagePosition = .imageLeading
+        phoneStatusItem.button?.action = #selector(togglePhonePopover)
+        phoneStatusItem.button?.target = self
+
+        phonePopover.behavior = .transient
+        let hosting = NSHostingController(rootView: PhoneMenuView(service: phoneStatsService))
+        hosting.sizingOptions = [.preferredContentSize]
+        phonePopover.contentViewController = hosting
+
+        // Both properties drive the same two pixels: the figure comes from the sample, the icon
+        // from whether it is recent. Subscribing to one and not the other would leave the icon
+        // claiming a live phone after the readings stopped.
+        phoneStatsService.$latest
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.updatePhoneMenuBar() }
+            .store(in: &cancellables)
+
+        phoneStatsService.$isStale
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.updatePhoneMenuBar() }
+            .store(in: &cancellables)
+
+        updatePhoneMenuBar()
+    }
+
+    private func updatePhoneMenuBar() {
+        let stats = phoneStatsService.latest
+        let isStale = phoneStatsService.isStale
+        let state = PhoneMenuBarLabel.state(for: stats, isStale: isStale)
+        phoneStatusItem.button?.image = PhoneMenuBarLabel.symbolImage(for: state)
+        phoneStatusItem.button?.attributedTitle = PhoneMenuBarLabel.attributedTitle(for: stats, isStale: isStale)
+    }
+
+    @objc private func togglePhonePopover() {
+        if phonePopover.isShown {
+            phonePopover.performClose(nil)
+        } else if let button = phoneStatusItem.button {
+            // Read once on opening rather than waiting for the next poll: the popover is opened
+            // precisely when somebody wants to know now.
+            phoneStatsService.refresh()
+            phonePopover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            phonePopover.contentViewController?.view.window?.makeKey()
+        }
     }
 
     private func openOptions() {
