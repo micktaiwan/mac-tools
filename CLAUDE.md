@@ -62,6 +62,9 @@ Single-target SwiftUI app with `@NSApplicationDelegateAdaptor` for menu bar inte
 
 **Snap** (`Snap/`) — drag a window against a screen edge, it snaps. Top maximizes, left and right take half. See the dedicated section below.
 
+**Phone** (`Phone/`) — the phone's processor, memory, heat and battery in a second status item.
+See the dedicated section below.
+
 **Options** (`Options/`)
 - `OptionsWindowController` — Owns the single Options window. Activates the app (`NSApp.activate`) because LSUIElement apps open windows behind everything otherwise.
 - `OptionsWindowView` — `NavigationSplitView` with the vertical tab list, plus the shared `OptionsPage` container. Tabs: General, Calendar and mail, Shortcuts, Windows.
@@ -213,6 +216,47 @@ stopped working when this was switched away from ad hoc. Fix: `tccutil reset <se
 
 Multi-screen is written for (every lookup goes through `NSScreen.screens`) but only tested on
 one display so far.
+
+## The phone (`MacTools/Features/Phone/`)
+
+A second `NSStatusItem`, showing the processor load of Mickael's Pixel and its battery level, with
+a popover for the detail. The measuring is done entirely by Kite on the phone and stored by
+`kited`; nothing here computes anything, because nothing on this Mac can — the counters are behind
+SELinux. What is and is not readable from an Android app is documented in
+`~/projects/perso/kite/CLAUDE.md`, decision 8.
+
+- `PhoneStatsService` reads `~/.local/share/kited/stats.jsonl` **off the disk**, not over HTTP.
+  Same machine, same user, so a port, a bearer token and a reachable daemon would be three more
+  things able to break for a file that can simply be opened. It reads a 64 KB window off the end
+  and drops the first fragment, because a window that starts mid-line starts on half a JSON object.
+- **Stale is a state, not an absence.** Anything older than 70 seconds stops being a reading and
+  becomes a dash. A phone that stopped reporting is otherwise indistinguishable from a quiet one:
+  same figure on screen, nothing saying it is frozen. Same lesson `phone.rs` carries in `kited`.
+- **Why a second item rather than a third field in the existing title.** That title already
+  concatenates the next meeting and the unread count, both of which vary in width; a third would
+  let the phone push the meeting off a narrow screen. A separate item is also independently
+  hideable and movable with a Cmd-drag.
+- **Why the figure is the processor load.** Not because it is the most useful thing to know — the
+  warnings matter far more — but because a number that moves is its own proof of life. A health
+  dot sitting on green looks identical whether the phone is fine or whether nothing has arrived
+  since Tuesday.
+- **One colour, one meaning.** The load colours itself (green under 50%, orange to 85%, red
+  above), the icon carries the warnings in orange, the battery has its own. The first version
+  painted the processor figure with a thermal warning, which produced an alarming 6% with no way
+  to learn the alarm was about heat.
+
+**Two thresholds that had to be corrected the same evening, for the same mistake: alerting on a
+normal state.** Both are worth keeping in mind before adding a third.
+
+- **Thermal level 1 is not a warning.** Android documents `THERMAL_STATUS_LIGHT` as "light
+  throttling where UX is not impacted", and this phone sits at 1 the entire time it is on a
+  charger. The threshold is 2.
+- **How full the swap is means nothing here.** It is zram, compressed pages held in RAM, which
+  Android fills on purpose to keep applications warm; measured on 21/08/2026 it went from 2.7 GB
+  free to 80 MB free within half an hour of a reboot while the phone was healthy. What actually
+  separated a sick phone from a healthy one was the read-back rate: 206 pages a second at 20% load,
+  against 6 a second at 5% afterwards. That rate lives in `/proc/vmstat`, which an app may not
+  read, so this side cannot see it and there is no swap warning at all.
 
 ## Configuration
 

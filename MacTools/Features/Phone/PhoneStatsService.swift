@@ -22,6 +22,13 @@ final class PhoneStatsService: ObservableObject {
     /// True when nothing has arrived recently enough to be worth showing as a number.
     @Published private(set) var isStale = true
 
+    /// The newest battery ranking seen, which is almost never on the newest sample.
+    ///
+    /// Held apart from `latest` on purpose. The phone attaches it every five minutes, so reading
+    /// it off the last line alone would show it for one sample in fifteen and blank the rest of
+    /// the time — a section that appears and disappears reads as a bug, not as a cadence.
+    @Published private(set) var apps: [PhoneStats.AppDrain] = []
+
     private var timer: Timer?
 
     /// The phone reports every twenty seconds. Three missed passes is a phone that is off, out
@@ -53,8 +60,9 @@ final class PhoneStatsService: ObservableObject {
     }
 
     func refresh() {
-        let sample = readLatest()
+        let (sample, ranking) = readLatest()
         latest = sample ?? latest
+        if let ranking, !ranking.isEmpty { apps = ranking }
         // Measured against the instant the daemon received it, never against the poll: a reader
         // that ran a second ago proves nothing about a phone that stopped talking last night.
         if let receivedAt = latest?.receivedAt {
@@ -70,21 +78,28 @@ final class PhoneStatsService: ObservableObject {
     /// because a window that starts mid-line starts on half a JSON object. A file being appended
     /// to while this reads is the ordinary case, not a race to guard against: the worst outcome
     /// is a truncated final line, which fails to parse, and the line before it answers instead.
-    private func readLatest() -> PhoneStats? {
-        guard let handle = try? FileHandle(forReadingFrom: storeURL) else { return nil }
+    private func readLatest() -> (PhoneStats?, [PhoneStats.AppDrain]?) {
+        guard let handle = try? FileHandle(forReadingFrom: storeURL) else { return (nil, nil) }
         defer { try? handle.close() }
 
-        guard let size = try? handle.seekToEnd() else { return nil }
+        guard let size = try? handle.seekToEnd() else { return (nil, nil) }
         let start = size > UInt64(tailBytes) ? size - UInt64(tailBytes) : 0
         try? handle.seek(toOffset: start)
-        guard let data = try? handle.readToEnd() else { return nil }
+        guard let data = try? handle.readToEnd() else { return (nil, nil) }
 
         var lines = data.split(separator: UInt8(ascii: "\n"), omittingEmptySubsequences: true)
         if start > 0 && !lines.isEmpty { lines.removeFirst() }
 
+        // One pass backwards for both answers: the newest sample of any kind, and the newest one
+        // that happens to carry a ranking. They are rarely the same line.
+        var newest: PhoneStats?
+        var ranking: [PhoneStats.AppDrain]?
         for line in lines.reversed() {
-            if let stats = PhoneStats.decode(line: Data(line)) { return stats }
+            guard let stats = PhoneStats.decode(line: Data(line)) else { continue }
+            if newest == nil { newest = stats }
+            if ranking == nil, !stats.apps.isEmpty { ranking = stats.apps }
+            if newest != nil, ranking != nil { break }
         }
-        return nil
+        return (newest, ranking)
     }
 }

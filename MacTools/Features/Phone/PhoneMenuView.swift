@@ -19,6 +19,10 @@ struct PhoneMenuView: View {
                 processor(stats)
                 Divider()
                 conditions(stats)
+                if !service.apps.isEmpty {
+                    Divider()
+                    drains
+                }
             }
         }
         .padding(14)
@@ -140,6 +144,36 @@ struct PhoneMenuView: View {
         if let celsius = battery.celsius { parts.append(String(format: "%.1f °C", celsius)) }
         if battery.charging == true { parts.append("en charge") }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    /// Who spent the battery, since its last full charge.
+    ///
+    /// Labelled with that window in small type rather than left to be guessed: every other figure
+    /// in this popover describes the last twenty seconds, and a ranking silently covering the
+    /// whole day would be read as "right now" and blamed on the wrong application.
+    private var drains: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text("Batterie dépensée par")
+                    .font(.subheadline)
+                Spacer()
+                Text("depuis la dernière charge")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+            ForEach(Array(service.apps.prefix(5).enumerated()), id: \.offset) { _, app in
+                HStack {
+                    Text(app.name)
+                        .font(.caption)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    Spacer()
+                    Text("\(Int(app.milliampHours.rounded())) mAh")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
     }
 
     private func row(_ label: String, _ value: String) -> some View {

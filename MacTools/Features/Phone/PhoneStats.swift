@@ -31,6 +31,18 @@ struct PhoneStats {
     /// How long the phone had been awake, excluding deep sleep.
     let uptime: TimeInterval?
 
+    /// Which applications drained the battery since its last full charge, biggest first.
+    ///
+    /// Empty on most samples rather than absent-meaning-nothing: the phone refreshes this every
+    /// five minutes, not every twenty seconds, because it costs a full `dumpsys batterystats` and
+    /// counts from the last charge anyway. The service keeps the newest non-empty one.
+    let apps: [AppDrain]
+
+    struct AppDrain {
+        let name: String
+        let milliampHours: Double
+    }
+
     struct Cluster {
         let cores: Int
         let maxKhz: Int
@@ -166,6 +178,11 @@ extension PhoneStats {
 
         let uptimeMs = sample["uptime_ms"] as? Double
 
+        let apps = (sample["apps"] as? [[String: Any]] ?? []).compactMap { raw -> AppDrain? in
+            guard let name = raw["name"] as? String, let mah = raw["mah"] as? Double else { return nil }
+            return AppDrain(name: name, milliampHours: mah)
+        }
+
         return PhoneStats(
             receivedAt: Date(timeIntervalSince1970: at / 1000),
             cpuLoad: sample["cpu_load"] as? Double,
@@ -173,7 +190,8 @@ extension PhoneStats {
             memory: memory,
             thermal: thermal,
             battery: battery,
-            uptime: uptimeMs.map { $0 / 1000 }
+            uptime: uptimeMs.map { $0 / 1000 },
+            apps: apps
         )
     }
 }
