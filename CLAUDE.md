@@ -245,6 +245,13 @@ SELinux. What is and is not readable from an Android app is documented in
   painted the processor figure with a thermal warning, which produced an alarming 6% with no way
   to learn the alarm was about heat.
 
+- **The drain ranking is a different clock from everything above it.** Every other figure in the
+  popover covers the last twenty seconds; the per-application ranking counts from the phone's last
+  full charge and refreshes every five minutes. It is labelled with that window on screen, because
+  a ranking silently covering the whole day gets read as "right now" and blames the wrong app. The
+  service keeps the newest non-empty one rather than reading the last line, so the section does not
+  blink in and out with the cadence.
+
 **Two thresholds that had to be corrected the same evening, for the same mistake: alerting on a
 normal state.** Both are worth keeping in mind before adding a third.
 
