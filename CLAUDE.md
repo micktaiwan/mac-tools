@@ -32,8 +32,12 @@ this app only.
 
 ```bash
 pkill -f "^/Applications/MacTools.app/Contents/MacOS/MacTools$"
+sleep 1
 open -a /Applications/MacTools.app
 ```
+
+The `sleep` is not decoration: `open` issued while the old instance is still exiting fails
+with `_LSOpenURLsWithCompletionHandler() … error -600` and nothing relaunches (13/10/2026).
 
 ## Architecture
 

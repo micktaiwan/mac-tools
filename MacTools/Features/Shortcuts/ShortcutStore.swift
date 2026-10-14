@@ -122,6 +122,7 @@ final class ShortcutStore: ObservableObject {
         guard let shortcut = shortcuts.first(where: { $0.id == id }) else {
             throw StoreError.notFound(id)
         }
+        ShortcutLog.write("ipc-run \(id)")
         let result = await ActionRunner.run(shortcut.action)
         lastResults[id] = result
         return result

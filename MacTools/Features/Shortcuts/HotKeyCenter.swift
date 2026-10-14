@@ -118,7 +118,11 @@ final class HotKeyCenter {
     }
 
     fileprivate func trigger(carbonID: UInt32) {
-        guard let registration = registrations[carbonID] else { return }
+        guard let registration = registrations[carbonID] else {
+            ShortcutLog.write("hotkey carbonID=\(carbonID) unknown")
+            return
+        }
+        ShortcutLog.write("hotkey \(registration.shortcutID)")
         onTrigger?(registration.shortcutID)
     }
 }

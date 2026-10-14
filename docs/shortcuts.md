@@ -26,6 +26,20 @@ is a convenience, not the only way in.
 A global hotkey takes priority over app shortcuts, so binding a combo an app uses (⇧⌘S is
 "Save As" in many) shadows it everywhere. Worth telling Mickael when it applies.
 
+## Debugging a shortcut that "does nothing"
+
+Start by recording what the keyboard actually sends, before looking for something that
+intercepts it. On 13/10/2026 a ⌃⇧N "that did not work with Kova in front" was really a ⇧⌘N
+press: an hour of hunting event taps, then one probe line settled it.
+
+- `~/Library/Logs/MacTools-shortcuts.log` (`ShortcutLog`) — always on, one line per fire with
+  its source: `hotkey <id>` for a real key press, `ipc-run <id>` for the socket's `run`.
+  `lastRun` keeps only the latest run and cannot tell the two apart.
+- `KeyProbe` — `defaults write com.micktaiwan.MacTools debugKeyLog -bool YES`, then relaunch.
+  Logs keyCode, characters, modifiers and frontmost app for every key press held with ⌃, ⌥
+  or ⌘ (never plain typing), into the same file. Needs the Accessibility grant. Delete the
+  key and relaunch when done.
+
 ## Implementation (`MacTools/Features/Shortcuts/`)
 
 - `UserShortcut` — Codable model. `key` is a single character ("l") or a named key ("f5", "space").
@@ -37,6 +51,7 @@ A global hotkey takes priority over app shortcuts, so binding a combo an app use
 - `ActionRunner` — Runs the command through `/bin/zsh -lc` (login shell, so `~/.local/bin` is in
   PATH), captures stdout and stderr together with the exit code.
 - `ShortcutStore` — Source of truth: loads/saves the JSON, watches the directory, re-registers.
+- `ShortcutLog`, `KeyProbe` — the fire log and the key probe, see the debugging section above.
 - `IPCServer` (`MacTools/Features/IPC/`) — Unix socket server. It also answers
   `next-event`, which has nothing to do with shortcuts: see the CLAUDE.md section.
 - `ShortcutsService` — Unrelated to the above: read-only inventory of shortcuts *already taken*

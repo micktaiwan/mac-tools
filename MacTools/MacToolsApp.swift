@@ -72,6 +72,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             .store(in: &cancellables)
 
         setUpPhoneStatusItem()
+        KeyProbe.startIfEnabled()
 
         ipcServer.start()
         snapService.start()
