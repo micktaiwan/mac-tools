@@ -29,7 +29,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private let shortcutStore = ShortcutStore()
     private let snapService = SnapService()
     private let luccaService = LuccaService()
-    private lazy var ipcServer = IPCServer(store: shortcutStore, calendar: calendarService)
+    private let soundService = SoundActivityService()
+    private lazy var ipcServer = IPCServer(store: shortcutStore, calendar: calendarService, sound: soundService)
     private let shortcutsInventory = ShortcutsService()
     private lazy var hintService = HintService(store: shortcutStore, inventory: shortcutsInventory)
     private lazy var optionsWindowController = OptionsWindowController(
@@ -54,6 +55,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             calendarService: calendarService,
             gmailService: gmailService,
             luccaService: luccaService,
+            soundService: soundService,
             onOpenOptions: { [weak self] in self?.openOptions() }
         )
         popover.behavior = .transient
@@ -167,6 +169,7 @@ struct MenuContentView: View {
     @ObservedObject var calendarService: CalendarService
     @ObservedObject var gmailService: GmailService
     @ObservedObject var luccaService: LuccaService
+    let soundService: SoundActivityService
     let onOpenOptions: () -> Void
 
     @State private var isRefreshing = false
@@ -251,6 +254,20 @@ struct MenuContentView: View {
             .padding(.bottom, 4)
 
             LuccaMenuView(service: luccaService)
+
+            Divider().padding(.vertical, 4)
+
+            HStack {
+                Image(systemName: "speaker.wave.2")
+                Text("Sons récents")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            .padding(.horizontal, 12)
+            .padding(.bottom, 4)
+
+            SoundMenuView(service: soundService)
 
             Divider().padding(.vertical, 4)
 

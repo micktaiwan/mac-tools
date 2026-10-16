@@ -16,7 +16,7 @@ response, connection closed.
 A successful `add` still returns `"ok": false` with an `error` when Carbon refuses the combo
 because another app already owns it. Read the response, do not assume it worked.
 
-`list` returns `lastExitCode`, `lastOutput` and `lastRun` per shortcut — that is how a failing
+`list` returns `{"ok", "shortcuts": [...]}`, each with `id`, `name`, `combo` (rendered, e.g. "⌃⌥G" — the `key`/`modifiers` given to `add` are not echoed back), `command`, `enabled`, plus `lastExitCode`, `lastOutput` and `lastRun` once it has fired — that is how a failing
 script gets diagnosed instead of being a key press that does nothing.
 
 Storage is `~/Library/Application Support/MacTools/shortcuts.json`. The app watches the

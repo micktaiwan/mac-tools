@@ -66,6 +66,9 @@ Single-target SwiftUI app with `@NSApplicationDelegateAdaptor` for menu bar inte
 
 **Snap** (`Snap/`) — drag a window against a screen edge, it snaps. Top maximizes, left and right take half. See the dedicated section below.
 
+**Sound** (`Sound/`) — the apps that played sound lately, in the popover; a click brings one
+to the front. See the dedicated section below.
+
 **Phone** (`Phone/`) — the phone's processor, memory, heat and battery in a second status item.
 See the dedicated section below.
 
@@ -99,7 +102,7 @@ echo '{"command":"next-event"}' | nc -U "$HOME/Library/Application Support/MacTo
 ```
 
 Commands: `list`, `add`, `remove`, `enable`, `run`, `reload` for the shortcuts, plus
-`next-event`.
+`next-event` and `recent-sounds`.
 
 **`next-event` is why the file stopped being called `ShortcutsIPCServer`.** This app is the
 one holding the calendar permission on this Mac, so it is the only thing that can answer
@@ -220,6 +223,33 @@ stopped working when this was switched away from ad hoc. Fix: `tccutil reset <se
 
 Multi-screen is written for (every lookup goes through `NSScreen.screens`) but only tested on
 one display so far.
+
+## Recent sounds (`MacTools/Features/Sound/`)
+
+"Which app just made that noise?" answered in the popover, eight entries, newest first, a click
+focuses the app (or launches it if it quit). `recent-sounds` on the socket answers the same list.
+
+- CoreAudio process objects (`kAudioHardwarePropertyProcessObjectList`, **macOS 14.2+**), one per
+  process holding an audio connection, with `kAudioProcessPropertyIsRunningOutput`. **Polled every
+  0.25 s**: a listener on that property registers fine and never fires (measured 15/10/2026, zero
+  callbacks while `afplay` played). A notification ping lasts half a second. Cost ~0.5% CPU.
+- **"Running output" = an open output stream, not an audible sound.** An app that keeps an
+  `AVAudioEngine` started between sounds reads as "en cours" forever; track did until its engine
+  was made to stop after each cue. Telling silence from sound per process needs a process tap and
+  the audio-capture permission.
+- Most audio comes from helpers (Slack Helper, WebKit GPU process). Each is folded onto its
+  *responsible* process through the private `responsibility_get_pid_responsible_for_pid`, looked up
+  with `dlsym`. The parent PID does not work: XPC services are children of launchd. Measured on
+  15/10/2026: Slack Helper, Mira Helper, CleanShot and Organizer's WebKit GPU all resolve to their app.
+- Processes without an `NSRunningApplication` or with `.prohibited` policy are system daemons and
+  are dropped — so `afplay` never shows up.
+- **Notification sounds are played by `systemsoundserverd`, not by the app** (a Slack ping is a
+  system daemon making noise). `NotificationWatcher` runs `log stream` on `usernoted`'s
+  `Presenting <NotificationRecord app:"…"> as banner ([… "sound" …])` lines, and a
+  `systemsoundserverd` start within 1.5 s of one is credited to that app. The notification
+  database would say the same but sits in another app's group container: TCC refuses it
+  (`kTCCServiceSystemPolicyAppDataDetailed`, no prompt) short of Full Disk Access.
+- History lives in UserDefaults (`soundActivityLastHeard`): the app relaunches after every build.
 
 ## The phone (`MacTools/Features/Phone/`)
 

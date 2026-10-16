@@ -7,7 +7,7 @@ import Foundation
 ///   echo '{"command":"list"}' | nc -U "$HOME/Library/Application Support/MacTools/ipc.sock"
 ///
 /// Commands: list, add, remove, enable, run, reload — the shortcuts — plus
-/// `next-event`, which is not about shortcuts at all. It was called
+/// `recent-sounds` and `next-event`, which is not about shortcuts at all. It was called
 /// ShortcutsIPCServer while shortcuts were the only thing anybody asked it for.
 /// They are not: this app is the one holding the calendar permission on this
 /// Mac, so it is the only thing that can answer "when is the next meeting", and
@@ -16,12 +16,14 @@ import Foundation
 final class IPCServer {
     private let store: ShortcutStore
     private let calendar: CalendarService
+    private let sound: SoundActivityService
     private var listenSource: DispatchSourceRead?
     private let ioQueue = DispatchQueue(label: "com.micktaiwan.MacTools.ipc")
 
-    init(store: ShortcutStore, calendar: CalendarService) {
+    init(store: ShortcutStore, calendar: CalendarService, sound: SoundActivityService) {
         self.store = store
         self.calendar = calendar
+        self.sound = sound
     }
 
     func start() {
@@ -170,6 +172,13 @@ final class IPCServer {
         case "next-event":
             return nextEvent()
 
+        case "recent-sounds":
+            guard sound.isSupported else { return Response(ok: false, error: "nécessite macOS 14.2") }
+            let formatter = ISO8601DateFormatter()
+            return Response(ok: true, sounds: sound.apps.map {
+                SoundDescriptor(bundleID: $0.bundleID, name: $0.name, lastHeard: formatter.string(from: $0.lastHeard), playing: $0.isPlaying)
+            })
+
         default:
             return Response(ok: false, error: "commande inconnue : \(request.command)")
         }
@@ -274,5 +283,15 @@ final class IPCServer {
         var error: String?
         var shortcuts: [ShortcutDescriptor]?
         var event: EventDescriptor?
+        var sounds: [SoundDescriptor]?
+    }
+
+    /// One entry of `recent-sounds`, newest first: the app, when it was last heard, and whether
+    /// it is producing sound at this instant.
+    private struct SoundDescriptor: Encodable {
+        let bundleID: String
+        let name: String
+        let lastHeard: String
+        let playing: Bool
     }
 }
